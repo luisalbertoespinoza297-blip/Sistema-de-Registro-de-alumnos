@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Registro de Estudiantes</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+    :root {
+        --primary: #0d6efd;
+        --success: #198754;
+        --danger: #dc3545;
+        --warning: #ffc107;
+    }
+    
+    body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        background: linear-gradient(135deg, #f4f6f9 0%, #e9ecef 100%);
+        margin: 0;
+        padding: 0;
+        color: #333;
+    }
+    
+    header {
+        background: linear-gradient(135deg, var(--primary), #0b5ed7);
+        color: #fff;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    }
+    
+    .container {
+        max-width: 1400px;
+        margin: 20px auto;
+        padding: 0 20px;
+    }
+    
+    .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,.1);
+        transition: transform 0.2s;
+    }
+    
+    .card:hover {
+        transform: translateY(-3px);
+    }
+    
+    h1 { margin: 0; font-size: 2.2rem; }
+    h3 { margin-top: 0; color: #333; }
+    
+    input, select, button {
+        padding: 12px;
+        margin: 6px 0;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    
+    input:focus, select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+    }
+    
+    button {
+        background: var(--primary);
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    button:hover {
+        background: #0b5ed7;
+        transform: translateY(-2px);
+    }
+    
+    .btn-success { background: var(--success); }
+    .btn-danger { background: var(--danger); }
+    .btn-warning { background: var(--warning); color: #333; }
+    
+    .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    th, td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+    
+    th {
+        background: var(--primary);
+        color: white;
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    th:hover {
+        background: #0b5ed7;
+    }
+    
+    tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .qr-cell {
+        text-align: center;
+    }
+    
+    #reader {
+        width: 100%;
+        max-width: 400px;
+        margin: 15px auto;
+        border: 3px solid var(--primary);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,.7);
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    
+    .modal-content {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 10px 30px rgba(0,0,0,.3);
+    }
+    
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+    }
+    
+    .stat-card {
+        background: #fff;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    }
+    
+    .toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #333;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        display: none;
+        z-index: 2000;
+    }
+</style>
+</head>
+<body>
+<header>
+    <h1><i class="fas fa-graduation-cap"></i> Sistema de Registro de Estudiantes</h1>
+</header>
+
+<div class="container">
+    <!-- Estadísticas -->
+    <div class="card">
+        <h3>📊 Estadísticas</h3>
+        <div class="stats" id="stats">
+            <!-- Se llena con JS -->
+        </div>
+    </div>
+
+    <!-- Búsqueda y controles -->
+    <div class="card">
+        <h3>🔍 Buscar Estudiantes</h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <input type="text" id="searchInput" placeholder="Buscar por DNI, nombre o apellido..." style="flex: 1; min-width: 250px;">
+            <button onclick="filtrarTabla()"><i class="fas fa-search"></i> Filtrar</button>
+            <button onclick="limpiarFiltro()" class="btn-warning"><i class="fas fa-eraser"></i> Limpiar</button>
+        </div>
+    </div>
+
+    <!-- Registro -->
+    <div class="card">
+        <h3><i class="fas fa-user-plus"></i> Registrar Nuevo Estudiante</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+            <input id="dni" placeholder="DNI *" maxlength="20">
+            <input id="nombres" placeholder="Nombres *">
+            <input id="apellidos" placeholder="Apellidos *">
+            <input id="edad" type="number" placeholder="Edad" min="1" max="120">
+            <input id="telefono" placeholder="Teléfono">
+            <input id="email" type="email" placeholder="Correo Electrónico">
+            <input id="grado" placeholder="Grado / Curso">
+        </div>
+        <div class="actions">
+            <button onclick="guardarEstudiante()"><i class="fas fa-save"></i> Guardar Estudiante</button>
+            <button onclick="limpiarFormulario()" class="btn-warning"><i class="fas fa-broom"></i> Limpiar</button>
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3>📋 Estudiantes Registrados (<span id="total">0</span>)</h3>
+            <div>
+                <button onclick="exportarCSV()" style="margin-right:8px"><i class="fas fa-file-csv"></i> CSV</button>
+                <button onclick="exportarJSON()"><i class="fas fa-file-export"></i> JSON</button>
+                <button onclick="importarArchivo()" style="margin-left:8px"><i class="fas fa-file-import"></i> Importar</button>
+            </div>
+        </div>
+        
+        <input type="file" id="importFile" accept=".json,.csv" style="display:none">
+        
+        <table id="tablaEstudiantes">
+            <thead>
+                <tr>
+                    <th onclick="ordenarTabla(0)">DNI</th>
+                    <th onclick="ordenarTabla(1)">Nombres</th>
+                    <th onclick="ordenarTabla(2)">Apellidos</th>
+                    <th onclick="ordenarTabla(3)">Edad</th>
+                    <th onclick="ordenarTabla(4)">Teléfono</th>
+                    <th onclick="ordenarTabla(5)">Correo</th>
+                    <th>QR</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla"></tbody>
+        </table>
+    </div>
+
+    <!-- Escáner QR -->
+    <div class="card">
+        <h3><i class="fas fa-qrcode"></i> Escanear Código QR</h3>
+        <button onclick="toggleScanner()" id="btnScanner">
+            <i class="fas fa-camera"></i> Abrir Cámara
+        </button>
+        <div id="reader" style="display:none"></div>
+        <p id="resultado" style="margin-top:10px; font-weight:600;"></p>
+    </div>
+</div>
+
+<!-- Modal Edición -->
+<div class="modal" id="modalEditar">
+    <div class="modal-content">
+        <h3>Editar Estudiante</h3>
+        <input id="editDni" placeholder="DNI">
+        <input id="editNombres" placeholder="Nombres">
+        <input id="editApellidos" placeholder="Apellidos">
+        <input id="editEdad" type="number" placeholder="Edad">
+        <input id="editTelefono" placeholder="Teléfono">
+        <input id="editEmail" type="email" placeholder="Correo">
+        <input id="editGrado" placeholder="Grado">
+        
+        <div class="actions" style="margin-top:15px">
+            <button onclick="guardarEdicion()" class="btn-success">Guardar Cambios</button>
+            <button onclick="cerrarModal()" class="btn-danger">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast">Acción completada</div>
+
+<script>
+// ==================== VARIABLES GLOBALES ====================
+let estudiantes = JSON.parse(localStorage.getItem("estudiantes")) || [];
+let editingIndex = -1;
+let currentSort = { column: 0, ascending: true };
+let scanner = null;
+
+// ==================== UTILIDADES ====================
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.style.background = type === 'success' ? '#198754' : '#dc3545';
+    toast.style.display = 'block';
+    setTimeout(() => toast.style.display = 'none', 3000);
+}
+
+function actualizarEstadisticas() {
+    const total = estudiantes.length;
+    const edades = estudiantes.map(e => parseInt(e.edad) || 0).filter(a => a > 0);
+    const avgAge = edades.length ? (edades.reduce((a,b)=>a+b,0)/edades.length).toFixed(1) : 0;
+    
+    document.getElementById('stats').innerHTML = `
+        <div class="stat-card">
+            <h2>${total}</h2>
+            <p>Total Estudiantes</p>
+        </div>
+        <div class="stat-card">
+            <h2>${avgAge}</h2>
+            <p>Edad Promedio</p>
+        </div>
+        <div class="stat-card">
+            <h2>${estudiantes.filter(e => e.email).length}</h2>
+            <p>Con Correo</p>
+        </div>
+    `;
+}
+
+// ==================== CRUD ====================
+function actualizarTabla(filteredEstudiantes = null) {
+    const tabla = document.getElementById("tabla");
+    tabla.innerHTML = "";
+    
+    const data = filteredEstudiantes || estudiantes;
+    
+    data.forEach((e, i) => {
+        const originalIndex = estudiantes.indexOf(e);
+        const tr = document.createElement("tr");
+        
+        tr.innerHTML = `
+            <td>${e.dni || ''}</td>
+            <td>${e.nombres || ''}</td>
+            <td>${e.apellidos || ''}</td>
+            <td>${e.edad || ''}</td>
+            <td>${e.telefono || ''}</td>
+            <td>${e.email || ''}</td>
+            <td class="qr-cell"><div id="qr${originalIndex}" style="display:inline-block"></div></td>
+            <td>
+                <button onclick="editarEstudiante(${originalIndex})" style="padding:6px 10px; font-size:0.9rem"><i class="fas fa-edit"></i></button>
+                <button onclick="eliminarEstudiante(${originalIndex})" class="btn-danger" style="padding:6px 10px; font-size:0.9rem"><i class="fas fa-trash"></i></button>
+            </td>
+        `;
+        
+        tabla.appendChild(tr);
+        
+        // Generar QR
+        setTimeout(() => {
+            new QRCode(document.getElementById(`qr${originalIndex}`), {
+                text: JSON.stringify(e),
+                width: 70,
+                height: 70,
+                colorDark: "#000000",
+                colorLight: "#ffffff"
+            });
+        }, 10);
+    });
+    
+    document.getElementById("total").textContent = data.length;
+    localStorage.setItem("estudiantes", JSON.stringify(estudiantes));
+    actualizarEstadisticas();
+}
+
+function guardarEstudiante() {
+    const dni = document.getElementById("dni").value.trim();
+    
+    if (!dni || !document.getElementById("nombres").value.trim() || !document.getElementById("apellidos").value.trim()) {
+        showToast("DNI, Nombres y Apellidos son obligatorios", "error");
+        return;
+    }
+    
+    // Verificar DNI duplicado
+    if (estudiantes.some(e => e.dni === dni && estudiantes.indexOf(e) !== editingIndex)) {
+        showToast("Ya existe un estudiante con ese DNI", "error");
+        return;
+    }
+    
+    const estudiante = {
+        dni: dni,
+        nombres: document.getElementById("nombres").value.trim(),
+        apellidos: document.getElementById("apellidos").value.trim(),
+        edad: document.getElementById("edad").value,
+        telefono: document.getElementById("telefono").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        grado: document.getElementById("grado").value.trim()
+    };
+    
+    if (editingIndex >= 0) {
+        estudiantes[editingIndex] = estudiante;
+        editingIndex = -1;
+        showToast("Estudiante actualizado correctamente");
+    } else {
+        estudiantes.push(estudiante);
+        showToast("Estudiante registrado correctamente");
+    }
+    
+    actualizarTabla();
+    limpiarFormulario();
+}
+
+function editarEstudiante(index) {
+    const e = estudiantes[index];
+    editingIndex = index;
+    
+    document.getElementById("editDni").value = e.dni || '';
+    document.getElementById("editNombres").value = e.nombres || '';
+    document.getElementById("editApellidos").value = e.apellidos || '';
+    document.getElementById("editEdad").value = e.edad || '';
+    document.getElementById("editTelefono").value = e.telefono || '';
+    document.getElementById("editEmail").value = e.email || '';
+    document.getElementById("editGrado").value = e.grado || '';
+    
+    document.getElementById("modalEditar").style.display = "flex";
+}
+
+function guardarEdicion() {
+    if (editingIndex < 0) return;
+    
+    estudiantes[editingIndex] = {
+        dni: document.getElementById("editDni").value.trim(),
+        nombres: document.getElementById("editNombres").value.trim(),
+        apellidos: document.getElementById("editApellidos").value.trim(),
+        edad: document.getElementById("editEdad").value,
+        telefono: document.getElementById("editTelefono").value.trim(),
+        email: document.getElementById("editEmail").value.trim(),
+        grado: document.getElementById("editGrado").value.trim()
+    };
+    
+    cerrarModal();
+    actualizarTabla();
+    showToast("Cambios guardados");
+}
+
+function eliminarEstudiante(index) {
+    if (!confirm("¿Eliminar este estudiante permanentemente?")) return;
+    
+    estudiantes.splice(index, 1);
+    actualizarTabla();
+    showToast("Estudiante eliminado");
+}
+
+function limpiarFormulario() {
+    document.querySelectorAll("#dni, #nombres, #apellidos, #edad, #telefono, #email, #grado").forEach(input => input.value = "");
+    editingIndex = -1;
+}
+
+// ==================== MODAL ====================
+function cerrarModal() {
+    document.getElementById("modalEditar").style.display = "none";
+}
+
+// ==================== FILTRO Y ORDENAMIENTO ====================
+function filtrarTabla() {
+    const termino = document.getElementById("searchInput").value.toLowerCase().trim();
+    
+    if (!termino) {
+        actualizarTabla();
+        return;
+    }
+    
+    const filtrados = estudiantes.filter(e => 
+        (e.dni && e.dni.toLowerCase().includes(termino)) ||
+        (e.nombres && e.nombres.toLowerCase().includes(termino)) ||
+        (e.apellidos && e.apellidos.toLowerCase().includes(termino)) ||
+        (e.email && e.email.toLowerCase().includes(termino))
+    );
+    
+    actualizarTabla(filtrados);
+}
+
+function limpiarFiltro() {
+    document.getElementById("searchInput").value = "";
+    actualizarTabla();
+}
+
+function ordenarTabla(col) {
+    if (currentSort.column === col) {
+        currentSort.ascending = !currentSort.ascending;
+    } else {
+        currentSort.column = col;
+        currentSort.ascending = true;
+    }
+    
+    estudiantes.sort((a, b) => {
+        let valA = Object.values(a)[col] || '';
+        let valB = Object.values(b)[col] || '';
+        
+        if (!isNaN(valA) && !isNaN(valB)) {
+            return currentSort.ascending ? valA - valB : valB - valA;
+        }
+        
+        return currentSort.ascending 
+            ? valA.toString().localeCompare(valB.toString())
+            : valB.toString().localeCompare(valA.toString());
+    });
+    
+    actualizarTabla();
+}
+
+// ==================== EXPORTACIÓN / IMPORTACIÓN ====================
+function exportarJSON() {
+    const data = JSON.stringify(estudiantes, null, 2);
+    const blob = new Blob([data], {type: "application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `backup_estudiantes_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    showToast("Backup JSON descargado");
+}
+
+function exportarCSV() {
+    if (!estudiantes.length) return showToast("No hay datos para exportar", "error");
+    
+    let csv = "DNI,Nombres,Apellidos,Edad,Teléfono,Email,Grado\n";
+    estudiantes.forEach(e => {
+        csv += `"${e.dni || ''}","${e.nombres || ''}","${e.apellidos || ''}",${e.edad || ''},"${e.telefono || ''}","${e.email || ''}","${e.grado || ''}"\n`;
+    });
+    
+    const blob = new Blob([csv], {type: "text/csv"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `estudiantes_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    showToast("Archivo CSV descargado");
+}
+
+function importarArchivo() {
+    document.getElementById("importFile").click();
+}
+
+document.getElementById("importFile").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        try {
+            if (file.name.endsWith('.json')) {
+                estudiantes = JSON.parse(ev.target.result);
+            } else if (file.name.endsWith('.csv')) {
+                // Simple CSV parser
+                const lines = ev.target.result.split('\n');
+                estudiantes = [];
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    if (cols.length >= 3) {
+                        estudiantes.push({
+                            dni: cols[0].replace(/"/g,''),
+                            nombres: cols[1].replace(/"/g,''),
+                            apellidos: cols[2].replace(/"/g,''),
+                            edad: cols[3],
+                            telefono: cols[4].replace(/"/g,''),
+                            email: cols[5].replace(/"/g,''),
+                            grado: cols[6] ? cols[6].replace(/"/g,'') : ''
+                        });
+                    }
+                }
+            }
+            actualizarTabla();
+            showToast("Datos importados correctamente");
+        } catch(err) {
+            showToast("Error al importar archivo", "error");
+        }
+    };
+    reader.readAsText(file);
+});
+
+// ==================== ESCÁNER QR ====================
+let isScanning = false;
+
+function toggleScanner() {
+    const readerDiv = document.getElementById("reader");
+    const btn = document.getElementById("btnScanner");
+    
+    if (!isScanning) {
+        readerDiv.style.display = "block";
+        btn.innerHTML = `<i class="fas fa-stop"></i> Detener Cámara`;
+        iniciarScanner();
+    } else {
+        detenerScanner();
+    }
+}
+
+function iniciarScanner() {
+    if (scanner) {
+        detenerScanner();
+    }
+    
+    scanner = new Html5Qrcode("reader");
+    isScanning = true;
+    
+    scanner.start(
+        { facingMode: "environment" },
+        { fps: 15, qrbox: { width: 280, height: 280 } },
+        (decodedText) => {
+            document.getElementById("resultado").innerHTML = `<strong>✅ Escaneado:</strong> ${decodedText.substring(0, 80)}...`;
+            
+            try {
+                const datos = JSON.parse(decodedText);
+                alert(`Estudiante encontrado:\n${datos.nombres} ${datos.apellidos}\nDNI: ${datos.dni}`);
+            } catch(e) {}
+            
+            // Opcional: detener después de escanear
+            // detenerScanner();
+        },
+        (error) => {}
+    ).catch(err => {
+        console.error(err);
+        showToast("Error al iniciar cámara", "error");
+    });
+}
+
+function detenerScanner() {
+    if (scanner) {
+        scanner.stop().then(() => {
+            document.getElementById("reader").style.display = "none";
+            document.getElementById("btnScanner").innerHTML = `<i class="fas fa-camera"></i> Abrir Cámara`;
+            isScanning = false;
+            scanner = null;
+        });
+    }
+}
+
+// ==================== INICIALIZACIÓN ====================
+document.addEventListener("DOMContentLoaded", () => {
+    actualizarTabla();
+    actualizarEstadisticas();
+    
+    // Atajo de teclado para búsqueda
+    document.getElementById("searchInput").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") filtrarTabla();
+    });
+    
+    // Cerrar modal con Escape
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            const modal = document.getElementById("modalEditar");
+            if (modal.style.display === "flex") cerrarModal();
+        }
+    });
+});
+</script>
+</body>
+</html>
